@@ -1,0 +1,20 @@
+erDiagram
+    EVENT_LOG_UUID {
+        uuid id PK
+        bigint actor_id
+        text event_type
+        timestamptz occurred_at
+        text source_system
+        jsonb payload
+        timestamptz created_at
+    }
+
+    EVENT_LOG_BIGSERIAL {
+        bigint id PK
+        bigint actor_id
+        text event_type
+        timestamptz occurred_at
+        text source_system
+        jsonb payload
+        timestamptz created_at
+    }
