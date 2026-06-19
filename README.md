@@ -1,5 +1,7 @@
 # HSE DB Essay: UUID против BIGSERIAL
 
+[![SQL experiment CI](https://github.com/mrggrmexe/HSE-DB-ESSAY/actions/workflows/ci.yml/badge.svg)](https://github.com/mrggrmexe/HSE-DB-ESSAY/actions/workflows/ci.yml)
+
 Репозиторий содержит готовый комплект для сдачи по заданию курса
 «Конструирование баз данных».
 

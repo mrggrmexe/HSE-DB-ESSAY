@@ -1,0 +1,70 @@
+name: SQL experiment CI
+
+# Проверяет, что весь сценарий технического приложения выполняется без ошибок
+# на чистой PostgreSQL-базе в обоих порядках загрузки. Это smoke-test
+# воспроизводимости, а не промышленный benchmark, поэтому объём небольшой.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  run-sql:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hse_db_essay
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: hse_db_essay
+      # Небольшой объём ради скорости CI; локально можно поднимать до 1000000.
+      ROW_COUNT: 20000
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install psql client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Show PostgreSQL version
+        run: psql -c "SELECT version();"
+
+      - name: Run experiment (normal load order)
+        run: psql -v ON_ERROR_STOP=1 -v row_count=$ROW_COUNT -f sql/run_all.sql
+
+      - name: Run experiment (reverse load order)
+        run: psql -v ON_ERROR_STOP=1 -v row_count=$ROW_COUNT -v load_bigserial_first=true -f sql/run_all.sql
+
+      - name: Verify both tables loaded equal row counts
+        run: |
+          psql -v ON_ERROR_STOP=1 -t -A -c "
+            SELECT CASE
+              WHEN (SELECT count(*) FROM pk_benchmark.event_log_uuid)
+                 = (SELECT count(*) FROM pk_benchmark.event_log_bigserial)
+              THEN 'OK: row counts match'
+              ELSE 'FAIL: row counts differ'
+            END;
+          " | tee /tmp/check.txt
+          grep -q '^OK' /tmp/check.txt
